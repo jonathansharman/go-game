@@ -8,6 +8,7 @@ import (
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/inpututil"
+	"github.com/solarlune/resolv"
 )
 
 //go:embed niche.png
@@ -25,11 +26,9 @@ const (
 )
 
 type Player struct {
-	X     float64
-	Y     float64
-	VX    float64
-	VY    float64
-	Image *ebiten.Image
+	Object   *resolv.Circle
+	Velocity resolv.Vector
+	Image    *ebiten.Image
 }
 
 func NewPlayer() Player {
@@ -39,59 +38,57 @@ func NewPlayer() Player {
 	}
 
 	return Player{
-		X:     screenWidth / 2,
-		Y:     screenHeight / 2,
-		Image: ebiten.NewImageFromImage(playerImage),
+		Object: resolv.NewCircle(screenWidth/2, screenHeight/2, playerWidth/2),
+		Image:  ebiten.NewImageFromImage(playerImage),
 	}
 }
 
 func (p Player) Collider() image.Rectangle {
 	return image.Rectangle{
 		Min: image.Point{
-			X: int(p.X - playerWidth/2),
-			Y: int(p.Y - playerHeight),
+			X: int(p.Object.Position().X - playerWidth/2),
+			Y: int(p.Object.Position().Y - playerHeight),
 		},
 		Max: image.Point{
-			X: int(p.X + playerWidth/2),
-			Y: int(p.Y + 1),
+			X: int(p.Object.Position().X + playerWidth/2),
+			Y: int(p.Object.Position().Y + 1),
 		},
 	}
 }
 
 func (p *Player) Update(blocks []image.Rectangle) {
-	onGround := p.Y >= ground
+	onGround := p.Object.Position().Y >= ground
 
 	collider := p.Collider()
 	for _, block := range blocks {
-		if p.VY >= 0 && collider.Overlaps(block) {
+		if p.Velocity.Y >= 0 && collider.Overlaps(block) {
 			onGround = true
-			p.Y = float64(block.Min.Y)
-			p.VY = 0
+			p.Object.SetY(float64(block.Min.Y))
+			p.Velocity.Y = 0
 		}
 	}
 
-	if onGround && p.VY >= 0 {
+	if onGround && p.Velocity.Y >= 0 {
 		if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
-			p.VX -= playerAcceleration
+			p.Velocity.X -= playerAcceleration
 		}
 		if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
-			p.VX += playerAcceleration
+			p.Velocity.X += playerAcceleration
 		}
 		if inpututil.IsKeyJustPressed(ebiten.KeySpace) {
-			p.VY = -playerJumpSpeed
+			p.Velocity.Y = -playerJumpSpeed
 		}
 	}
 
-	p.X += p.VX
-	p.Y += p.VY
+	p.Object.MoveVec(p.Velocity)
 	if onGround {
-		p.VX *= friction
+		p.Velocity.X *= friction
 	} else {
-		p.VY += gravity
+		p.Velocity.Y += gravity
 	}
-	if p.Y > ground {
-		p.Y = ground
-		p.VY = 0
+	if p.Object.Position().Y > ground {
+		p.Object.SetY(ground)
+		p.Velocity.Y = 0
 	}
 }
 
@@ -102,7 +99,7 @@ func (p Player) Draw(screen *ebiten.Image) {
 		playerHeight/float64(p.Image.Bounds().Dy()),
 	)
 	geoM.Translate(-playerWidth/2, -playerHeight/2)
-	geoM.Rotate(p.VX * p.VY / 100)
-	geoM.Translate(p.X, p.Y-playerHeight/2)
+	geoM.Rotate(p.Velocity.X * p.Velocity.Y / 100)
+	geoM.Translate(p.Object.Position().X, p.Object.Position().Y-playerHeight/2)
 	screen.DrawImage(p.Image, &ebiten.DrawImageOptions{GeoM: geoM})
 }

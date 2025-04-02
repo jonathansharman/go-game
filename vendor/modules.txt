@@ -68,6 +68,9 @@ github.com/jezek/xgb
 github.com/jezek/xgb/randr
 github.com/jezek/xgb/render
 github.com/jezek/xgb/xproto
+# github.com/solarlune/resolv v0.8.1
+## explicit; go 1.20
+github.com/solarlune/resolv
 # golang.org/x/sync v0.6.0
 ## explicit; go 1.18
 golang.org/x/sync/errgroup
