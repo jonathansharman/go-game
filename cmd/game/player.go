@@ -19,14 +19,14 @@ const (
 	playerHeight = 60
 
 	playerAcceleration = 1
-	playerJumpSpeed    = 10
+	playerJumpSpeed    = 15
 
-	gravity  = 0.4
+	gravity  = 0.8
 	friction = 0.85
 )
 
 type Player struct {
-	Object   *resolv.Circle
+	Object   *resolv.ConvexPolygon
 	Velocity resolv.Vector
 	Image    *ebiten.Image
 }
@@ -38,34 +38,29 @@ func NewPlayer() Player {
 	}
 
 	return Player{
-		Object: resolv.NewCircle(screenWidth/2, screenHeight/2, playerWidth/2),
-		Image:  ebiten.NewImageFromImage(playerImage),
+		Object: resolv.NewRectangleFromTopLeft(
+			screenWidth/2-playerWidth/2,
+			screenHeight/2-playerHeight/2,
+			playerWidth,
+			playerHeight,
+		),
+		Image: ebiten.NewImageFromImage(playerImage),
 	}
 }
 
-func (p Player) Collider() image.Rectangle {
-	return image.Rectangle{
-		Min: image.Point{
-			X: int(p.Object.Position().X - playerWidth/2),
-			Y: int(p.Object.Position().Y - playerHeight),
-		},
-		Max: image.Point{
-			X: int(p.Object.Position().X + playerWidth/2),
-			Y: int(p.Object.Position().Y + 1),
-		},
-	}
-}
+func (p *Player) Update() {
+	onGround := p.Object.Bounds().Max.Y >= ground
 
-func (p *Player) Update(blocks []image.Rectangle) {
-	onGround := p.Object.Position().Y >= ground
-
-	collider := p.Collider()
-	for _, block := range blocks {
-		if p.Velocity.Y >= 0 && collider.Overlaps(block) {
-			onGround = true
-			p.Object.SetY(float64(block.Min.Y))
-			p.Velocity.Y = 0
-		}
+	if p.Velocity.Y >= 0 {
+		p.Object.IntersectionTest(resolv.IntersectionTestSettings{
+			TestAgainst: p.Object.SelectTouchingCells(1).FilterShapes(),
+			OnIntersect: func(set resolv.IntersectionSet) bool {
+				onGround = true
+				p.Object.SetY(set.TopmostPoint().Y - playerHeight/2 + 1)
+				p.Velocity.Y = 0
+				return false
+			},
+		})
 	}
 
 	if onGround && p.Velocity.Y >= 0 {
@@ -86,8 +81,8 @@ func (p *Player) Update(blocks []image.Rectangle) {
 	} else {
 		p.Velocity.Y += gravity
 	}
-	if p.Object.Position().Y > ground {
-		p.Object.SetY(ground)
+	if p.Object.Bounds().Max.Y > ground {
+		p.Object.SetY(ground - playerHeight/2 + 1)
 		p.Velocity.Y = 0
 	}
 }
@@ -100,6 +95,6 @@ func (p Player) Draw(screen *ebiten.Image) {
 	)
 	geoM.Translate(-playerWidth/2, -playerHeight/2)
 	geoM.Rotate(p.Velocity.X * p.Velocity.Y / 100)
-	geoM.Translate(p.Object.Position().X, p.Object.Position().Y-playerHeight/2)
+	geoM.Translate(p.Object.Position().X, p.Object.Position().Y-1)
 	screen.DrawImage(p.Image, &ebiten.DrawImageOptions{GeoM: geoM})
 }

@@ -1,13 +1,13 @@
 package main
 
 import (
-	"image"
 	"image/color"
 	"log"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
 	"github.com/hajimehoshi/ebiten/v2/vector"
+	"github.com/solarlune/resolv"
 )
 
 const (
@@ -18,11 +18,42 @@ const (
 
 type Game struct {
 	Player Player
-	Blocks []image.Rectangle
+	Blocks []Block
+}
+
+func NewGame() *Game {
+	player := NewPlayer()
+	blocks := []Block{
+		NewBlock(
+			screenWidth/2,
+			0.6*screenHeight,
+			screenWidth/4,
+			10,
+			color.Black,
+		),
+		NewBlock(
+			screenWidth/4,
+			0.3*screenHeight,
+			screenWidth/4,
+			10,
+			color.RGBA{R: 255, A: 255},
+		),
+	}
+
+	space := resolv.NewSpace(screenWidth, screenHeight, playerWidth, playerHeight)
+	space.Add(player.Object)
+	for _, block := range blocks {
+		space.Add(block.Object)
+	}
+
+	return &Game{
+		Player: player,
+		Blocks: blocks,
+	}
 }
 
 func (g *Game) Update() error {
-	g.Player.Update(g.Blocks)
+	g.Player.Update()
 
 	return nil
 }
@@ -31,7 +62,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{G: 128, B: 255, A: 255})
 	vector.DrawFilledRect(screen, 0, ground, screenWidth, screenHeight-ground, color.RGBA{G: 128, A: 255}, false)
 	for _, block := range g.Blocks {
-		vector.DrawFilledRect(screen, float32(block.Min.X), float32(block.Min.Y), float32(block.Max.X-block.Min.X), float32(block.Max.Y-block.Min.Y), color.Black, false)
+		block.Draw(screen)
 	}
 
 	g.Player.Draw(screen)
@@ -46,21 +77,7 @@ func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
 func main() {
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Hello, Learn Over Lunch!")
-	if err := ebiten.RunGame(&Game{
-		Player: NewPlayer(),
-		Blocks: []image.Rectangle{
-			{
-				Min: image.Point{
-					X: screenWidth / 2,
-					Y: 0.6 * screenHeight,
-				},
-				Max: image.Point{
-					X: screenWidth,
-					Y: 0.6*screenHeight + 10,
-				},
-			},
-		},
-	}); err != nil {
+	if err := ebiten.RunGame(NewGame()); err != nil {
 		log.Fatal(err)
 	}
 }
