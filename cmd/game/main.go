@@ -3,22 +3,25 @@ package main
 import (
 	"image/color"
 	"log"
+	"math/rand"
+	"slices"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
-	"github.com/hajimehoshi/ebiten/v2/vector"
 	"github.com/solarlune/resolv"
 )
 
 const (
 	screenWidth  = 640
 	screenHeight = 480
-	ground       = 0.8 * screenHeight
 )
 
 type Game struct {
+	Space  *resolv.Space
 	Player Player
 	Blocks []Block
+	Timer  *time.Ticker
 }
 
 func NewGame() *Game {
@@ -31,13 +34,6 @@ func NewGame() *Game {
 			10,
 			color.Black,
 		),
-		NewBlock(
-			screenWidth/4,
-			0.3*screenHeight,
-			screenWidth/4,
-			10,
-			color.RGBA{R: 255, A: 255},
-		),
 	}
 
 	space := resolv.NewSpace(screenWidth, screenHeight, playerWidth, playerHeight)
@@ -47,20 +43,51 @@ func NewGame() *Game {
 	}
 
 	return &Game{
+		Space:  space,
 		Player: player,
 		Blocks: blocks,
+		Timer:  time.NewTicker(3 * time.Second),
 	}
 }
 
 func (g *Game) Update() error {
 	g.Player.Update()
 
+	for i := range g.Blocks {
+		block := &g.Blocks[i]
+		block.Update()
+		if block.Dead() {
+			g.Space.Remove(block.Object)
+		}
+	}
+
+	g.Blocks = slices.DeleteFunc(g.Blocks, Block.Dead)
+
+	select {
+	case <-g.Timer.C:
+		block := NewBlock(
+			screenWidth,
+			rand.Float64()*screenHeight,
+			screenWidth/8,
+			10,
+			color.RGBA{
+				R: uint8(rand.Intn(256)),
+				G: uint8(rand.Intn(256)),
+				B: uint8(rand.Intn(256)),
+				A: 255,
+			},
+		)
+		g.Space.Add(block.Object)
+		g.Blocks = append(g.Blocks, block)
+	default:
+	}
+
 	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.Fill(color.RGBA{G: 128, B: 255, A: 255})
-	vector.DrawFilledRect(screen, 0, ground, screenWidth, screenHeight-ground, color.RGBA{G: 128, A: 255}, false)
+
 	for _, block := range g.Blocks {
 		block.Draw(screen)
 	}

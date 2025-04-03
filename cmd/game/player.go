@@ -49,8 +49,7 @@ func NewPlayer() Player {
 }
 
 func (p *Player) Update() {
-	onGround := p.Object.Bounds().Max.Y >= ground
-
+	onGround := false
 	if p.Velocity.Y >= 0 {
 		p.Object.IntersectionTest(resolv.IntersectionTestSettings{
 			TestAgainst: p.Object.SelectTouchingCells(1).FilterShapes(),
@@ -80,10 +79,6 @@ func (p *Player) Update() {
 		p.Velocity.X *= friction
 	} else {
 		p.Velocity.Y += gravity
-	}
-	if p.Object.Bounds().Max.Y > ground {
-		p.Object.SetY(ground - playerHeight/2 + 1)
-		p.Velocity.Y = 0
 	}
 }
 
